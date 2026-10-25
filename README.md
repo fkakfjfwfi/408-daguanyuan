@@ -27,21 +27,27 @@ python -m http.server 8471
 
 ## 部署到 GitHub Pages
 
-1. 在 GitHub 新建仓库，把本目录全部文件推上去（保持目录结构）：
+**本站已部署在线**：https://fkakfjfwfi.github.io/408-daguanyuan/
+
+部署模式为 **Pages 分支部署**（Deploy from branch）：仓库 main 分支即站点，每次 `git push` 到 main 后 GitHub 自动重新构建发布，无需任何手动操作。
+
+自己从零部署的步骤：
+
+1. GitHub 新建公开仓库，推送本目录：
 
    ```bash
-   git init
+   git init -b main
    git add -A
    git commit -m "408大观园"
-   git remote add origin https://github.com/<你的用户名>/<仓库名>.git
+   git remote add origin https://github.com/<用户名>/<仓库名>.git
    git push -u origin main
    ```
 
-2. 仓库 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**。
-3. 之后每次 `git push` 到 main，`.github/workflows/pages.yml` 会自动发布。
-4. 访问 `https://<你的用户名>.github.io/<仓库名>/`。
+2. 仓库 **Settings → Pages → Build and deployment → Source** 选 **Deploy from a branch**，Branch 选 **main / (root)**，保存。
+3. 一两分钟后访问 `https://<用户名>.github.io/<仓库名>/`。
 
 > 站点全部使用相对路径 + 哈希路由，放在仓库子路径（`/<repo>/`）下无需任何配置改动。
+> 备选：`.github/workflows/pages.yml`（Actions 模式）保留在本地，如需启用需给 OAuth 令牌加 `workflow` 权限后再入库。
 
 ## 目录结构
 
