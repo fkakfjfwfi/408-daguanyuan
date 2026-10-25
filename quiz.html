@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能刷题 · 408大观园</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23a63428'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='serif' font-weight='bold'>观</text></svg>">
+<style>
+.runner { max-width: 860px; margin: 0 auto; padding: 34px 20px 70px; }
+.q-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.q-meta .badge.year { background: color-mix(in srgb, var(--gold) 15%, transparent); color: var(--gold); }
+.q-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 26px 28px; box-shadow: var(--shadow); white-space: pre-line;
+}
+.q-card .qtext { font-size: 17px; font-weight: 600; line-height: 1.9; }
+.opt {
+  display: flex; gap: 12px; align-items: flex-start; width: 100%; text-align: left;
+  margin-top: 12px; padding: 13px 16px; border-radius: 12px; cursor: pointer;
+  border: 1.5px solid var(--line); background: var(--paper-2); color: var(--ink);
+  font-size: 15px; line-height: 1.7; transition: .15s; font-family: inherit;
+}
+.opt .tag { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; background: var(--card); border: 1px solid var(--line); }
+.opt:hover:not(:disabled) { border-color: var(--ink-3); }
+.opt:disabled { cursor: default; opacity: .85; }
+.opt.right { border-color: var(--green); background: color-mix(in srgb, var(--green) 12%, var(--card)); }
+.opt.wrong { border-color: var(--seal); background: color-mix(in srgb, var(--seal) 12%, var(--card)); }
+.explain {
+  margin-top: 16px; border-left: 3px solid var(--seal); border-radius: 0 10px 10px 0;
+  background: var(--seal-soft); padding: 12px 16px; font-size: 14.5px; color: var(--ink-2); line-height: 1.8;
+  display: none;
+}
+.explain b { color: var(--seal); }
+.runner-bar { display: flex; align-items: center; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+.runner-bar .grow { flex: 1; }
+.btn {
+  border: 1px solid var(--line); background: var(--card); color: var(--ink-2);
+  border-radius: 999px; padding: 8px 20px; font-size: 14px; cursor: pointer; text-decoration: none; transition: .15s;
+}
+.btn:hover { border-color: var(--seal); color: var(--seal); }
+.btn.primary { background: var(--seal); border-color: var(--seal); color: #fff; font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.08); color: #fff; }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.small { padding: 5px 14px; font-size: 13px; }
+.qprogress { height: 8px; background: var(--paper-2); border-radius: 99px; overflow: hidden; margin: 22px 0 8px; }
+.qprogress i { display: block; height: 100%; background: linear-gradient(90deg, var(--seal), var(--gold)); transition: .3s; }
+.qstats { font-size: 13px; color: var(--ink-3); display: flex; gap: 18px; flex-wrap: wrap; }
+.toast {
+  position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--ink); color: var(--paper); border-radius: 999px; padding: 9px 22px; font-size: 14px;
+  opacity: 0; pointer-events: none; transition: .25s; z-index: 99;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.done-panel { text-align: center; padding: 40px 20px; }
+.done-panel .score { font-family: "Noto Serif SC", serif; font-size: 46px; font-weight: 900; color: var(--seal); }
+.list-row {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px 20px; margin-bottom: 12px; box-shadow: var(--shadow);
+}
+.list-row h3 { font-family: "Noto Serif SC", serif; font-size: 17px; flex: 1; min-width: 180px; }
+.mini { font-size: 12.5px; color: var(--ink-3); }
+.overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.ov-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); text-decoration: none; display: block; transition: .18s; }
+.ov-card:hover { transform: translateY(-2px); border-color: var(--gc, var(--seal)); }
+.ov-card h3 { font-family: "Noto Serif SC", serif; font-size: 19px; }
+.ov-card .row { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-2); margin-top: 8px; }
+.ov-card .bar { height: 7px; background: var(--paper-2); border-radius: 99px; overflow: hidden; margin-top: 8px; }
+.ov-card .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--seal), var(--gold)); }
+.import-box {
+  background: var(--card); border: 1px dashed var(--gold); border-radius: var(--radius);
+  padding: 18px 20px; margin-top: 14px; display: none;
+}
+.import-box.open { display: block; }
+.import-box textarea {
+  width: 100%; min-height: 130px; margin: 10px 0; padding: 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--paper); color: var(--ink);
+  font-family: Consolas, monospace; font-size: 12.5px; resize: vertical;
+}
+.mode-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html"><span class="seal-mini serif">观</span>408大观园</a>
+    <nav class="nav">
+      <a href="index.html">首页</a>
+      <a href="subject.html#/ds">四大观</a>
+      <a href="quiz.html#/" class="active">刷题</a>
+      <a href="cuoti.html">错题本</a>
+      <a href="resources.html">资源宝库</a>
+      <button class="mode-btn" id="modeBtn" title="切换深浅色">◐</button>
+    </nav>
+  </div>
+</header>
+
+<div class="runner" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<footer style="margin-top:0">
+  <div class="foot-inner">
+    <div class="fbrand">408大观园 · 智能刷题</div>
+    <div class="disclaimer">题目据公开回忆版整理，个别为贴近考点的改编；完整套卷为 40 选择 + 7 大题，本站按收录进度逐年补全，也可通过「导入题目」灌入完整真题 JSON。答题记录与错题本保存在本地浏览器。</div>
+  </div>
+</footer>
+
+<script src="js/data.js"></script>
+<script src="js/questions-ds.js"></script>
+<script src="js/questions-co.js"></script>
+<script src="js/questions-os.js"></script>
+<script src="js/questions-cn.js"></script>
+<script src="js/questions-exams.js"></script>
+<script src="js/main.js?v=2"></script>
+<script>
+  const ORDER = ['ds', 'co', 'os', 'cn'];
+  const YEARS = Array.from({ length: 2026 - 2009 + 1 }, (_, i) => 2009 + i);
+  const LETTERS = ['A', 'B', 'C', 'D'];
+  const app = document.getElementById('app');
+  let session = null;
+
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+  const yTag = q => q.custom ? '导入题' : (q.y && q.y !== '经典' ? q.y + '真题' : '经典题');
+
+  // ---------- 路由 ----------
+  onRoute(() => {
+    const p = routePath();
+    if (p[0] === 'wrong') return runQuiz(qWrongIds().map(id => allQ().find(q => q.id === id)).filter(Boolean), '错题重刷');
+    if (p[0] === 'papers') return renderPapers();
+    if (p[0] === 'paper' && p[1]) {
+      const list = allQ().filter(q => q.y && q.y !== '经典' && q.y === p[1]);
+      return runQuiz(list, p[1] + ' 年真题卷');
+    }
+    if (ORDER.includes(p[0])) {
+      if (p[1] && /^ch\d+$/.test(p[1])) {
+        const ch = +p[1].slice(2);
+        const list = allQ().filter(q => q.s === p[0] && q.c === ch);
+        return runQuiz(list, SUBJECTS[p[0]].name + ' · ' + (SUBJECTS[p[0]].chapters[ch] || { t: '第' + (ch + 1) + '章' }).t);
+      }
+      return renderChapters(p[0]);
+    }
+    renderOverview();
+  });
+
+  // ---------- 总览 ----------
+  function renderOverview() {
+    document.title = '智能刷题 · 408大观园';
+    const Q = allQ();
+    const done = Q.filter(q => qAnswered(q.id)).length;
+    const wrongN = qWrongIds().length;
+    const yearTagged = Q.filter(q => q.y && q.y !== '经典').length;
+    app.innerHTML = `
+      <section class="hero" style="padding:56px 0 6px">
+        <div class="hero-badge">408os 风格 · <b>章节真题 · 真题套卷 · 即答即判 · 错题自动归档</b></div>
+        <h1 style="font-size:clamp(30px,4.5vw,44px)">智能<span class="dgy serif">刷题</span></h1>
+        <p class="sub">按章节或按年份刷题，答完立刻判分并展开解析；答错的题自动进入错题本，答对后自动移出。</p>
+      </section>
+      <div class="stats" style="margin-top:22px">
+        <div class="stat"><b>${Q.length}<i>题</i></b><span>题库总量（含导入）</span></div>
+        <div class="stat"><b>${yearTagged}<i>题</i></b><span>带年份真题标签</span></div>
+        <div class="stat"><b>${done}<i>题</i></b><span>已做过</span></div>
+        <div class="stat"><b>${wrongN}<i>题</i></b><span>待消灭错题</span></div>
+      </div>
+      <section style="padding-top:34px">
+        <div class="block-head"><h2 class="serif">选择模式</h2></div>
+        <div class="mode-cards">
+          <a class="ov-card" style="--gc:var(--seal)" href="quiz.html#/papers">
+            <h3 class="serif">📜 真题套卷</h3>
+            <div class="row"><span>2009–2026 按年份</span><span>完整卷 40 选择+7 大题</span></div>
+            <div class="bar"><i style="width:${yearTagged / Q.length * 100}%"></i></div>
+          </a>
+          <a class="ov-card" style="--gc:var(--gold)" href="quiz.html#/ds">
+            <h3 class="serif">🗂 章节刷题</h3>
+            <div class="row"><span>四科 26 章</span><span>薄弱章节逐个击破</span></div>
+            <div class="bar"><i style="width:${done / Q.length * 100}%"></i></div>
+          </a>
+          <a class="ov-card" style="--gc:var(--green)" href="quiz.html#/wrong">
+            <h3 class="serif">📕 错题重刷</h3>
+            <div class="row"><span>${wrongN} 题待消灭</span><span>答对自动移出</span></div>
+            <div class="bar"><i style="width:${wrongN ? 100 - wrongN / Math.max(done, 1) * 100 : 100}%"></i></div>
+          </a>
+        </div>
+        <div class="block-head" style="margin-top:30px"><h2 class="serif">选择科目（章节刷题）</h2></div>
+        <div class="overview-grid">
+          ${ORDER.map(k => {
+            const S = SUBJECTS[k];
+            const qs = Q.filter(q => q.s === k);
+            const dn = qs.filter(q => qAnswered(q.id)).length;
+            const ok = qs.filter(q => { const a = qGetAns(q.id); return a && a.ok; }).length;
+            const rate = dn ? Math.round(ok / dn * 100) : 0;
+            return `
+            <a class="ov-card" style="--gc:${S.color}" href="quiz.html#/${k}">
+              <h3 class="serif" style="color:${S.color}">${S.name}</h3>
+              <div class="row"><span>题量 ${qs.length}</span><span>已做 ${dn}</span><span>正确率 ${rate}%</span></div>
+              <div class="bar"><i style="width:${dn / qs.length * 100}%"></i></div>
+            </a>`;
+          }).join('')}
+        </div>
+
+        <div class="block-head" style="margin-top:34px"><h2 class="serif">导入题目（补全历年真题）</h2>
+          <button class="btn small" id="impToggle">展开 / 收起</button>
+          <button class="btn small" id="impClear">清空导入</button>
+        </div>
+        <div class="import-box" id="impBox">
+          <p style="font-size:13.5px;color:var(--ink-2)">粘贴 JSON 数组即可把完整真题灌进题库（保存在本地浏览器，与内置 ${QUIZ_BANK.length} 题合并使用、参与套卷与错题本）。字段：<code>s</code>(ds/co/os/cn) <code>c</code>(章节序号0起) <code>y</code>(年份) <code>q</code> 题干 <code>o</code> 四选项 <code>a</code> 正确下标 <code>e</code> 解析。示例：</p>
+          <textarea id="impText" placeholder='[{"s":"cn","c":3,"y":"2019","q":"题干……","o":["A","B","C","D"],"a":1,"e":"解析……"}]'></textarea>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button class="btn primary" id="impBtn">导入</button>
+            <span class="mini">当前已导入 ${customQs().length} 题</span>
+          </div>
+        </div>
+      </section>`;
+
+    document.getElementById('impToggle').onclick = () => document.getElementById('impBox').classList.toggle('open');
+    document.getElementById('impClear').onclick = () => {
+      if (!customQs().length) return toast('当前没有导入题');
+      customSave([]); toast('已清空导入题目'); renderOverview();
+    };
+    document.getElementById('impBtn').onclick = doImport;
+  }
+
+  function doImport() {
+    let arr;
+    try { arr = JSON.parse(document.getElementById('impText').value); }
+    catch (e) { return toast('JSON 解析失败：' + e.message.slice(0, 40)); }
+    if (!Array.isArray(arr)) return toast('需要 JSON 数组，如 [ {...}, {...} ]');
+    const ok = [], errs = [];
+    const base = customQs();
+    arr.forEach((q, i) => {
+      if (!ORDER.includes(q.s)) return errs.push(`第${i + 1}题 s 需为 ds/co/os/cn`);
+      const S = SUBJECTS[q.s];
+      if (!Number.isInteger(q.c) || q.c < 0 || q.c >= S.chapters.length) return errs.push(`第${i + 1}题 c 章节序号无效`);
+      if (!q.q || !Array.isArray(q.o) || q.o.length !== 4 || !Number.isInteger(q.a) || q.a < 0 || q.a > 3)
+        return errs.push(`第${i + 1}题 需要 q / o(4项) / a(0-3)`);
+      ok.push({
+        id: q.id || 'cus-' + Date.now() + '-' + i,
+        s: q.s, c: q.c, y: String(q.y || '经典'), custom: true,
+        q: String(q.q), o: q.o.map(String), a: q.a, e: String(q.e || '')
+      });
+    });
+    customSave(base.concat(ok));
+    document.getElementById('impText').value = '';
+    toast(`成功导入 ${ok.length} 题` + (errs.length ? `，${errs.length} 题格式有误被跳过` : ''));
+    if (errs.length) console.warn('导入错误明细：', errs);
+    renderOverview();
+  }
+
+  // ---------- 真题套卷 ----------
+  function renderPapers() {
+    document.title = '真题套卷 · 408大观园';
+    const rows = YEARS.map(y => {
+      const list = allQ().filter(q => q.y && q.y !== '经典' && q.y === String(y));
+      const dn = list.filter(q => qAnswered(q.id)).length;
+      const ok = list.filter(q => { const a = qGetAns(q.id); return a && a.ok; }).length;
+      const rate = dn ? Math.round(ok / dn * 100) : 0;
+      return `
+        <div class="list-row" style="${list.length ? '' : 'opacity:.55'}">
+          <h3 class="serif">${y} 年真题</h3>
+          <span class="mini">${list.length ? `收录 ${list.length} 题` : '暂未收录'}</span>
+          ${list.length ? `<span class="mini">已做 ${dn}</span><span class="mini">正确率 ${rate}%</span>
+            <a class="btn primary" href="quiz.html#/paper/${y}">${dn ? '继续刷' : '开卷'}</a>`
+            : `<span class="mini">可用「导入题目」灌入该年完整卷</span>`}
+        </div>`;
+    }).join('');
+    app.innerHTML = `
+      <section class="hero" style="padding:48px 0 6px">
+        <div class="hero-badge">2009–2026 · <b>按年份开卷</b> · 收录逐年补全</div>
+        <h1 style="font-size:clamp(28px,4vw,40px)">真题<span class="dgy serif">套卷</span></h1>
+        <p class="sub">完整套卷为 40 道选择 + 7 道大题。带年份标签的题会进入对应年份卷；想刷完整卷，用下方「导入题目」灌入真题 JSON 即可。</p>
+      </section>
+      <section style="padding-top:22px">${rows}
+        <a class="btn" href="quiz.html#/">← 返回总览</a>
+      </section>`;
+  }
+
+  // ---------- 章节列表 ----------
+  function renderChapters(sub) {
+    const S = SUBJECTS[sub];
+    document.title = S.name + '刷题 · 408大观园';
+    app.innerHTML = `
+      <section class="hero" style="padding:48px 0 6px">
+        <div class="hero-badge">按章节刷题 · 点击任意章节开始</div>
+        <h1 style="font-size:clamp(28px,4vw,40px)"><span class="dgy serif">${S.full}</span> · 刷题</h1>
+      </section>
+      <section style="padding-top:24px">
+        ${S.chapters.map((c, i) => {
+          const qs = allQ().filter(q => q.s === sub && q.c === i);
+          const dn = qs.filter(q => qAnswered(q.id)).length;
+          const ok = qs.filter(q => { const a = qGetAns(q.id); return a && a.ok; }).length;
+          const rate = dn ? Math.round(ok / dn * 100) : 0;
+          return `
+          <div class="list-row">
+            <h3 class="serif">${c.t}</h3>
+            <span class="mini">题量 ${qs.length}</span>
+            <span class="mini">已做 ${dn}</span>
+            <span class="mini">正确率 ${rate}%</span>
+            <a class="btn primary" href="quiz.html#/${sub}/ch${i}">${dn ? '继续刷' : '开始刷'}</a>
+          </div>`;
+        }).join('')}
+        <a class="btn" href="quiz.html#/">← 返回科目总览</a>
+      </section>`;
+  }
+
+  // ---------- 答题 ----------
+  function runQuiz(list, title) {
+    if (!list.length) {
+      app.innerHTML = `
+        <div class="done-panel">
+          <div class="serif" style="font-size:22px;margin-bottom:10px">${title}</div>
+          <p style="color:var(--ink-2)">这里没有题可刷：可能是还没做过题，或者错题本已经清空。🎉</p>
+          <div style="margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+            <a class="btn primary" href="quiz.html#/">去刷题</a>
+            <a class="btn" href="quiz.html#/papers">真题套卷</a>
+            <a class="btn" href="cuoti.html">错题本</a>
+          </div>
+        </div>`;
+      return;
+    }
+    session = { list, i: 0, right: 0, wrong: [], title };
+    renderQuestion();
+  }
+
+  function renderQuestion() {
+    const q = session.list[session.i];
+    const rec = qGetAns(q.id);
+    const S = SUBJECTS[q.s];
+    const chName = S.chapters[q.c] ? S.chapters[q.c].t : '';
+    const optsHtml = q.o.map((o, oi) => {
+      let cls = 'opt';
+      if (rec) {
+        if (oi === q.a) cls += ' right';
+        else if (oi === rec.pick) cls += ' wrong';
+      }
+      return `<button class="${cls}" data-oi="${oi}"><span class="tag">${LETTERS[oi]}</span><span>${o}</span></button>`;
+    }).join('');
+
+    app.innerHTML = `
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding-top:26px">
+        <a class="btn" href="quiz.html#/${q.s}">← ${session.title}</a>
+        <span class="mini">${S.name} · ${chName}</span>
+      </div>
+      <div class="qprogress"><i style="width:${(session.i) / session.list.length * 100}%"></i></div>
+      <div class="qstats" style="margin-bottom:14px">
+        <span>第 ${session.i + 1} / ${session.list.length} 题</span>
+        <span style="color:var(--green)">本组答对 ${session.right}</span>
+        <span style="color:var(--seal)">答错 ${session.wrong.length}</span>
+      </div>
+      <div class="q-card">
+        <div class="q-meta">
+          <span class="badge ${(!q.y || q.y === '经典') ? 'mid' : 'year'}">${yTag(q)}</span>
+          <span class="badge type">${S.name}</span>
+        </div>
+        <div class="qtext">${q.q}</div>
+        <div class="opts">${optsHtml}</div>
+        <div class="explain" id="explain"></div>
+      </div>
+      <div class="runner-bar">
+        <button class="btn" id="prevBtn" ${session.i === 0 ? 'disabled' : ''}>上一题</button>
+        <div class="grow"></div>
+        ${session.i === session.list.length - 1
+          ? '<button class="btn primary" id="finishBtn">交卷看成绩</button>'
+          : '<button class="btn primary" id="nextBtn">下一题 →</button>'}
+      </div>`;
+
+    const optsEl = app.querySelector('.opts');
+    const explain = app.querySelector('#explain');
+    let locked = !!rec;
+    if (rec) showExplain(rec, q);
+
+    optsEl.addEventListener('click', e => {
+      const b = e.target.closest('.opt');
+      if (!b || locked) return;
+      locked = true;
+      const pick = +b.dataset.oi;
+      const ok = pick === q.a;
+      qRecord(q.id, ok, pick);
+      if (ok) session.right++;
+      else session.wrong.push(q);
+      showExplain({ ok, pick }, q, true);
+      updateStats();
+      toast(ok ? '答对了，真棒！' : '答错了，已加入错题本 📒');
+    });
+
+    function showExplain(r, qq) {
+      explain.style.display = 'block';
+      explain.innerHTML = `<b>${r.ok ? '✓ 回答正确' : '✗ 回答错误，正确答案是 ' + LETTERS[qq.a]}</b><br>${qq.e}`;
+      app.querySelectorAll('.opt').forEach(o => {
+        o.disabled = true;
+        const oi = +o.dataset.oi;
+        o.classList.toggle('right', oi === qq.a);
+        o.classList.toggle('wrong', !r.ok && oi === r.pick);
+      });
+    }
+
+    app.querySelector('#prevBtn').onclick = () => { session.i--; renderQuestion(); };
+    const nextBtn = app.querySelector('#nextBtn');
+    if (nextBtn) nextBtn.onclick = () => { session.i++; renderQuestion(); };
+    const finBtn = app.querySelector('#finishBtn');
+    if (finBtn) finBtn.onclick = renderDone;
+    window.scrollTo(0, 0);
+  }
+
+  function updateStats() {
+    const spans = app.querySelectorAll('.qstats span');
+    if (spans[1]) spans[1].textContent = `本组答对 ${session.right}`;
+    if (spans[2]) spans[2].textContent = `答错 ${session.wrong.length}`;
+  }
+
+  function renderDone() {
+    const n = session.list.length;
+    const rate = Math.round(session.right / n * 100);
+    app.innerHTML = `
+      <div class="done-panel">
+        <div class="mini" style="letter-spacing:.3em">${session.title}</div>
+        <div class="score serif">${session.right} / ${n}</div>
+        <p style="color:var(--ink-2)">正确率 ${rate}%${rate === 100 ? '，满分通过，可喜可贺！' : rate >= 80 ? '，稳扎稳打！' : rate >= 60 ? '，错题已归档，重刷薄弱章节吧。' : '，别灰心，错题本会陪你把坑都填平。'}</p>
+        <div style="margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button class="btn" id="redoBtn">再刷一遍</button>
+          ${session.wrong.length ? '<a class="btn primary" href="cuoti.html">去错题本看解析</a>' : '<a class="btn primary" href="quiz.html#/">换个章节</a>'}
+          <a class="btn" href="quiz.html#/">返回总览</a>
+        </div>
+      </div>`;
+    app.querySelector('#redoBtn').onclick = () => runQuiz(session.list, session.title);
+  }
+</script>
+</body>
+</html>

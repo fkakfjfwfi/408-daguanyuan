@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>408大观园 · 计算机考研公益知识库</title>
+<meta name="description" content="408大观园：一个专题，一网打尽。数据结构、组成原理、操作系统、计算机网络四大观，按章节整理考点与真题，收录全网免费网课、开源笔记与高分经验帖。">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23a63428'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='serif' font-weight='bold'>观</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html"><span class="seal-mini serif">观</span>408大观园</a>
+    <nav class="nav">
+      <a href="index.html" class="active">首页</a>
+      <a href="subject.html#/ds">四大观</a>
+      <a href="quiz.html#/">刷题</a>
+      <a href="cuoti.html">错题本</a>
+      <a href="resources.html">资源宝库</a>
+      <a href="#exam">考什么</a>
+      <a href="#roadmap">复习路线</a>
+      <button class="mode-btn" id="modeBtn" title="切换深浅色">◐</button>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-badge">公益 · 免费 · <b>灵感源自澄潇宇「大观园」</b> · 查漏补缺式 408 知识库</div>
+  <h1>408<span class="dgy serif">大观园</span></h1>
+  <p class="sub">数据结构 · 计算机组成原理 · 操作系统 · 计算机网络。四座园林，二十六进院落，把零散考点按章节一网打尽。</p>
+  <p class="motto serif">「 一个专题，一网打尽；公益共享，查漏补缺。 」</p>
+  <div class="stats">
+    <div class="stat"><b>4<i>科</i></b><span>四大观 · 统考全覆盖</span></div>
+    <div class="stat"><b>26<i>章</i></b><span>院落式章节导航</span></div>
+    <div class="stat"><b>280<i>题</i></b><span>章节题库 · 真题套卷 · 即答即判</span></div>
+    <div class="stat"><b>90<i>+</b></b><span>免费网课/开源仓库/经验帖</span></div>
+  </div>
+  <div class="hero-side">计算机考研 · 专业课代码 408</div>
+</section>
+
+<section class="block" id="gates">
+  <div class="block-head">
+    <h2 class="serif">四大观</h2>
+    <p>每科一园，按章排序；点击进园，勾选进度，查漏补缺。</p>
+  </div>
+  <div class="gate-grid" id="gateGrid"></div>
+</section>
+
+<section class="block" id="exam">
+  <div class="block-head">
+    <h2 class="serif">先看考什么</h2>
+    <p>408 全称「计算机学科专业基础综合」，总分 150，一张卷子四门课。</p>
+  </div>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>科目</th><th>分值</th><th>重头戏</th></tr></thead>
+      <tbody id="examBody"></tbody>
+    </table>
+  </div>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-top:16px;" id="qtypes"></div>
+</section>
+
+<section class="block" id="quiz-entry">
+  <div class="block-head">
+    <h2 class="serif">智能刷题 · 错题本</h2>
+    <p>408os 风格：按章节刷真题，即答即判、解析随出；错题自动归档，答对自动移出。</p>
+  </div>
+  <div class="exam-grid">
+    <a class="exam-card" href="quiz.html#/" style="text-decoration:none"><b class="serif">章节刷题 →</b><p>280 道题按 26 章组织，另有 2009–2026 按年份的真题套卷模式，支持导入完整真题 JSON。</p></a>
+    <a class="exam-card" href="cuoti.html" style="text-decoration:none"><b class="serif">错题本 →</b><p>答错的题自动进本，考前两周它就是你的专属背诵册。</p></a>
+  </div>
+</section>
+
+<section class="block" id="zhenti">
+  <div class="block-head">
+    <h2 class="serif">真题观止</h2>
+    <p>「真题选择题多为往年复现」——这是所有高分经验帖的共识。最迟十月中旬开真题。</p>
+    <a class="more" href="resources.html#jingyan">更多攻略 →</a>
+  </div>
+  <div class="exam-grid" id="examGrid"></div>
+  <div class="note"><b>真题哪里找：</b><a href="https://github.com/ddy-ddy/cs-408" target="_blank">ddy-ddy/cs-408</a>（含历年真题考频统计）、<a href="https://github.com/lanlankaoyanshan/408Bester" target="_blank">408Bester</a>（09–21 无水印版）、<a href="https://github.com/youngflysky/KaoYanZhenTi-PDF" target="_blank">KaoYanZhenTi-PDF</a>，冲刺期强烈推荐 <a href="https://www.bilibili.com/video/BV1icaxz8EXN" target="_blank">图领真题逐题精讲</a>（09–26 已完结，400万播放）。</div>
+</section>
+
+<section class="block" id="roadmap">
+  <div class="block-head">
+    <h2 class="serif">复习路线</h2>
+    <p>408 不难，难在内容之多、周期之长。三段打法，稳扎稳打。</p>
+  </div>
+  <div class="timeline" id="roadmapEl"></div>
+</section>
+
+<div class="note"><b>本站皆公益：</b>所有资源均索引自 B站 / GitHub / 知乎 / 小红书（站内授权检索）/ CSDN 等公开网络，仅供学习交流，版权归原作者所有；若涉侵权请联系删除。愿风格致敬 B站 <a href="https://space.bilibili.com/6536560" target="_blank">@澄潇宇</a> 的「大观园」公益资料。</div>
+
+<footer>
+  <div class="foot-inner">
+    <div class="fbrand">408大观园 · 计算机考研公益知识库</div>
+    <div class="foot-links">
+      <a href="subject.html#/ds">数据结构大观</a>
+      <a href="subject.html#/co">组成原理大观</a>
+      <a href="subject.html#/os">操作系统大观</a>
+      <a href="subject.html#/cn">计算机网络大观</a>
+      <a href="quiz.html#/">智能刷题</a>
+      <a href="cuoti.html">错题本</a>
+      <a href="resources.html">资源宝库</a>
+    </div>
+    <div class="disclaimer">资源索引生成于 2026-10，链接与播放量等以各平台实时数据为准 · 学习进度保存在本地浏览器，不上传任何数据</div>
+  </div>
+</footer>
+
+<script src="js/data.js"></script>
+<script>
+  // 四大观卡片
+  document.getElementById('gateGrid').innerHTML = Object.values(SUBJECTS).map(s => `
+    <a class="gate-card" style="--gc:${s.color}" href="subject.html?subject=${s.key}">
+      <div class="seal">${s.seal}</div>
+      <h3 class="serif">${s.full}</h3>
+      <div class="w">统考占 ${s.weight}</div>
+      <p>${s.intro.slice(0, 46)}…</p>
+      <div class="go">入园修习 →</div>
+    </a>`).join('');
+
+  // 考什么
+  document.getElementById('examBody').innerHTML = EXAM_STRUCTURE.items.map(i => `
+    <tr><td class="serif"><b>${i.s}</b></td><td><b class="bar">${i.w}</b></td><td>${i.n}</td></tr>`).join('');
+  document.getElementById('qtypes').innerHTML = EXAM_STRUCTURE.questionTypes.map(q => `
+    <div class="exam-card"><b class="serif" style="color:var(--ink)">${q.t}</b><p>${q.d}</p></div>`).join('');
+
+  // 真题观止
+  document.getElementById('examGrid').innerHTML = PAST_EXAMS.map(e => `
+    <div class="exam-card"><b class="serif">${e.y}</b><p>${e.d}</p></div>`).join('');
+
+  // 复习路线
+  document.getElementById('roadmapEl').innerHTML = ROADMAP.map(r => `
+    <div class="tl-item">
+      <h3 class="serif">${r.phase}<span class="tag">${r.tag}</span></h3>
+      <ul>${r.pts.map(p => `<li>${p}</li>`).join('')}</ul>
+    </div>`).join('');
+</script>
+<script src="js/main.js?v=2"></script>
+</body>
+</html>

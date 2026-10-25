@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>资源宝库 · 408大观园</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23a63428'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='serif' font-weight='bold'>观</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html"><span class="seal-mini serif">观</span>408大观园</a>
+    <nav class="nav">
+      <a href="index.html">首页</a>
+      <a href="subject.html#/ds">四大观</a>
+      <a href="quiz.html#/">刷题</a>
+      <a href="cuoti.html">错题本</a>
+      <a href="resources.html" class="active">资源宝库</a>
+      <button class="mode-btn" id="modeBtn" title="切换深浅色">◐</button>
+    </nav>
+  </div>
+</header>
+
+<section class="hero" style="padding-bottom:10px">
+  <div class="hero-badge">全网索引自 <b>B站 · GitHub · 知乎 · 小红书 · CSDN · 抖音 · MOOC</b> · 2026-10</div>
+  <h1 style="font-size:clamp(32px,5vw,48px)">资源<span class="dgy serif">宝库</span></h1>
+  <p class="sub">网课、开源仓库、书目、经验帖、真题，一站导航。支持按平台筛选与关键词搜索。</p>
+</section>
+
+<section class="block" style="padding-top:20px">
+  <div class="filter-row">
+    <input id="searchBox" type="search" placeholder="搜索资源名称或描述，如：王道 / 真题 / 130分…">
+  </div>
+  <div class="filter-row" id="pfTabs"></div>
+</section>
+
+<div id="resSections"></div>
+
+<footer>
+  <div class="foot-inner">
+    <div class="fbrand">408大观园 · 计算机考研公益知识库</div>
+    <div class="disclaimer">所有链接指向公开平台，播放量/Star 数为 2026-10 收集时数据。本站仅作导航索引，不做任何资源转存与售卖；侵删。</div>
+  </div>
+</footer>
+
+<script src="js/data.js"></script>
+<script>
+  const SECTIONS = ['courses', 'repos', 'books', 'exp', 'xhs', 'daguan', 'tools'];
+  let activePf = '全部', query = '';
+
+  const allPfs = [...new Set(SECTIONS.flatMap(k => RESOURCES[k].items.map(i => i.p)))];
+  document.getElementById('pfTabs').innerHTML =
+    ['全部', ...allPfs].map(p => `<button class="pf-tab ${p === '全部' ? 'on' : ''}" data-pf="${p}">${p}</button>`).join('');
+
+  document.getElementById('pfTabs').addEventListener('click', e => {
+    const b = e.target.closest('.pf-tab'); if (!b) return;
+    activePf = b.dataset.pf;
+    document.querySelectorAll('.pf-tab').forEach(t => t.classList.toggle('on', t === b));
+    render();
+  });
+  document.getElementById('searchBox').addEventListener('input', e => { query = e.target.value.trim(); render(); });
+
+  function render() {
+    document.getElementById('resSections').innerHTML = SECTIONS.map(k => {
+      const sec = RESOURCES[k];
+      const items = sec.items.filter(i =>
+        (activePf === '全部' || i.p === activePf) &&
+        (!query || (i.n + i.d).toLowerCase().includes(query.toLowerCase())));
+      if (!items.length) return '';
+      return `
+      <section class="block" style="padding-top:34px">
+        <div class="block-head">
+          <h2 class="serif">${sec.title}</h2>
+          <p>${sec.desc}</p>
+        </div>
+        <div class="res-grid">
+          ${items.map(i => `
+            <a class="res-card" href="${i.u || 'javascript:void(0)'}" ${i.u ? 'target="_blank" rel="noopener"' : ''}>
+              <h3>${i.n}<span class="pf ${i.p}">${i.p}</span></h3>
+              <p>${i.d}</p>
+            </a>`).join('')}
+        </div>
+      </section>`;
+    }).join('') || '<div class="note" style="text-align:center">没有匹配的资源，换个关键词试试。</div>';
+  }
+  render();
+</script>
+<script src="js/main.js?v=2"></script>
+</body>
+</html>

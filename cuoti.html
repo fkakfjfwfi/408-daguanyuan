@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>错题本 · 408大观园</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23a63428'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='serif' font-weight='bold'>观</text></svg>">
+<style>
+.wrong-q {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 22px 24px; margin-bottom: 14px; box-shadow: var(--shadow); white-space: pre-line;
+}
+.wrong-q .qtext { font-weight: 600; line-height: 1.9; }
+.wrong-q .ansline { margin-top: 12px; font-size: 14px; color: var(--ink-2); }
+.wrong-q .ansline b.you { color: var(--seal); }
+.wrong-q .ansline b.key { color: var(--green); }
+.wrong-q .explain {
+  margin-top: 12px; border-left: 3px solid var(--gold); border-radius: 0 10px 10px 0;
+  background: color-mix(in srgb, var(--gold) 10%, var(--card));
+  padding: 12px 16px; font-size: 14px; color: var(--ink-2); line-height: 1.8;
+}
+.opt-mini { margin-top: 8px; font-size: 14px; color: var(--ink-2); line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html"><span class="seal-mini serif">观</span>408大观园</a>
+    <nav class="nav">
+      <a href="index.html">首页</a>
+      <a href="subject.html#/ds">四大观</a>
+      <a href="quiz.html#/">刷题</a>
+      <a href="cuoti.html" class="active">错题本</a>
+      <a href="resources.html">资源宝库</a>
+      <button class="mode-btn" id="modeBtn" title="切换深浅色">◐</button>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-badge">错题自动归档 · 答对即移出 · <b>只做错过的题</b></div>
+  <h1 style="font-size:clamp(32px,5vw,50px)">错题<span class="dgy serif">本</span></h1>
+  <p class="sub">刷题中答错的题都躺在这里。重刷答对自动移出；也可以直接移除。考前两周，这本就是你的专属背诵册。</p>
+  <div class="stats" style="margin-top:26px" id="wrongStats"></div>
+</section>
+
+<section class="block" style="padding-top:10px">
+  <div class="block-head">
+    <h2 class="serif">待消灭错题</h2>
+    <p id="headNote"></p>
+    <a class="more" id="redoAll" href="quiz.html#/wrong">错题重刷模式 →</a>
+  </div>
+  <div id="wrongList"></div>
+</section>
+
+<footer>
+  <div class="foot-inner">
+    <div class="fbrand">408大观园 · 错题本</div>
+    <div class="disclaimer">错题记录保存在本地浏览器 localStorage，仅自己可见。</div>
+  </div>
+</footer>
+
+<script src="js/data.js"></script>
+<script src="js/questions-ds.js"></script>
+<script src="js/questions-co.js"></script>
+<script src="js/questions-os.js"></script>
+<script src="js/questions-cn.js"></script>
+<script src="js/questions-exams.js"></script>
+<script src="js/main.js?v=2"></script>
+<script>
+  const LETTERS = ['A', 'B', 'C', 'D'];
+  const ORDER = ['ds', 'co', 'os', 'cn'];
+  const byId = Object.fromEntries(allQ().map(q => [q.id, q]));
+  const bySub = { ds: [], co: [], os: [], cn: [] };
+
+  function load() {
+    bySub.ds.length = bySub.co.length = bySub.os.length = bySub.cn.length = 0;
+    qWrongIds().forEach(id => { const q = byId[id]; if (q) bySub[q.s].push(q); });
+    ORDER.forEach(k => bySub[k].sort((a, b) => a.c - b.c));
+    render();
+  }
+
+  function render() {
+    const total = Object.values(bySub).reduce((a, l) => a + l.length, 0);
+    document.getElementById('wrongStats').innerHTML = `
+      <div class="stat"><b style="color:var(--seal)">${total}<i>题</i></b><span>待消灭错题</span></div>
+      ${['ds', 'co', 'os', 'cn'].map(k => `
+        <div class="stat"><b>${bySub[k].length}<i>题</i></b><span>${SUBJECTS[k].name}</span></div>`).join('')}`;
+    document.getElementById('headNote').textContent = total
+      ? '重刷答对后自动移出；也可点「移出错题本」。'
+      : '错题本是空的——去刷题吧，遇到错题它会自动出现。';
+    document.getElementById('redoAll').style.display = total ? '' : 'none';
+
+    const el = document.getElementById('wrongList');
+    if (!total) {
+      el.innerHTML = `
+        <div class="done-panel" style="padding:30px 0">
+          <div class="serif" style="font-size:26px">🎉 错题清零，可喜可贺</div>
+          <a class="btn primary" style="margin-top:14px;display:inline-block" href="quiz.html#/">继续刷题</a>
+        </div>`;
+      return;
+    }
+    el.innerHTML = ['ds', 'co', 'os', 'cn'].map(k => {
+      const list = bySub[k];
+      if (!list.length) return '';
+      const S = SUBJECTS[k];
+      return `
+        <div class="block-head" style="margin-top:26px">
+          <h2 class="serif" style="font-size:22px">${S.name}</h2>
+        </div>
+        ${list.map(q => `
+          <div class="wrong-q">
+            <div class="q-meta" style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+              <span class="badge ${q.y === '经典' ? 'mid' : ''}" style="background:color-mix(in srgb, var(--gold) 15%, transparent);color:var(--gold)">${q.y === '经典' ? '经典题' : q.y + '真题'}</span>
+              <span class="badge type">${S.chapters[q.c] ? S.chapters[q.c].t : ''}</span>
+              <span style="flex:1"></span>
+              <button class="btn" data-remove="${q.id}">移出错题本</button>
+            </div>
+            <div class="qtext">${q.q}</div>
+            <div>${q.o.map((o, oi) => `<div class="opt-mini"><b>${LETTERS[oi]}.</b> ${o}${oi === q.a ? ' ✓' : ''}</div>`).join('')}</div>
+            <div class="ansline">你的答案：<b class="you">${(() => { const a = qGetAns(q.id); return a ? LETTERS[a.pick] : '未答'; })()}</b>　正确答案：<b class="key">${LETTERS[q.a]}</b></div>
+            <div class="explain">${q.e}</div>
+          </div>`).join('')}`;
+    }).join('');
+  }
+
+  document.getElementById('wrongList').addEventListener('click', e => {
+    const b = e.target.closest('[data-remove]');
+    if (!b) return;
+    qRemoveWrong(b.dataset.remove);
+    load();
+  });
+
+  load();
+</script>
+</body>
+</html>

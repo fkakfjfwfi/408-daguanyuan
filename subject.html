@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>科目大观 · 408大观园</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23a63428'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='serif' font-weight='bold'>观</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html"><span class="seal-mini serif">观</span>408大观园</a>
+    <nav class="nav">
+      <a href="index.html">首页</a>
+      <a href="subject.html#/ds" class="active">四大观</a>
+      <a href="quiz.html#/">刷题</a>
+      <a href="cuoti.html">错题本</a>
+      <a href="resources.html">资源宝库</a>
+      <button class="mode-btn" id="modeBtn" title="切换深浅色">◐</button>
+    </nav>
+  </div>
+</header>
+
+<div class="sub-tabs" id="subTabs"></div>
+
+<section class="subject-hero" id="subjectHero"></section>
+
+<div class="subject-layout">
+  <aside class="toc" id="toc">
+    <h4>园中导览 · 章节进度</h4>
+    <nav id="tocNav"></nav>
+    <div class="prog">
+      <span id="progText">已勘熟 0 / 0</span>
+      <div class="bar"><i id="progBar" style="width:0%"></i></div>
+    </div>
+  </aside>
+  <main id="chapters"></main>
+</div>
+
+<div class="prevnext" id="prevnext"></div>
+
+<footer>
+  <div class="foot-inner">
+    <div class="fbrand">408大观园 · 计算机考研公益知识库</div>
+    <div class="disclaimer">复习状态（未启 / 修习中 / 已勘熟）保存在本地浏览器 localStorage，仅自己可见。资源来自公开网络，侵删。</div>
+  </div>
+</footer>
+
+<script src="js/data.js"></script>
+<script src="js/questions-ds.js"></script>
+<script src="js/questions-co.js"></script>
+<script src="js/questions-os.js"></script>
+<script src="js/questions-cn.js"></script>
+<script src="js/questions-exams.js"></script>
+<script src="js/main.js?v=2"></script>
+<script>
+  const ORDER = ['ds', 'co', 'os', 'cn'];
+  const qCount = (sub, ch) => allQ().filter(q => q.s === sub && q.c === ch).length;
+
+  const stateKey = (sub, i) => 'dgy408:' + sub + ':' + i;
+  function getState(sub, i) { return +(localStorage.getItem(stateKey(sub, i)) ?? -1); }
+  function setState(sub, i, v) { localStorage.setItem(stateKey(sub, i), v); renderToc(sub); renderChStates(sub); }
+  const STATE_NAMES = ['已勘熟', '修习中', '存疑回炉'];
+
+  // ---- 哈希多级路由：#/ds 或 #/ds/ch2 ----
+  function renderRoute() {
+    const parts = routePath();
+    const sub = ORDER.includes(parts[0]) ? parts[0] : 'ds';
+    const S = SUBJECTS[sub];
+    document.title = S.full + ' · 408大观园';
+    renderTabs(sub);
+    renderHero(sub);
+    renderChapters(sub);
+    renderToc(sub);
+    renderChStates(sub);
+    renderPrevNext(sub);
+    // 深链到指定章节 #/ds/ch2
+    const m = parts[1] && parts[1].match(/^ch(\d+)$/);
+    if (m) {
+      const el = document.getElementById('ch' + m[1]);
+      if (el) {
+        el.scrollIntoView({ behavior: 'instant', block: 'start' });
+        el.classList.add('flash');
+        setTimeout(() => el.classList.remove('flash'), 1600);
+      }
+    } else window.scrollTo(0, 0);
+  }
+  onRoute(renderRoute);
+
+  function renderTabs(sub) {
+    document.getElementById('subTabs').innerHTML = ORDER.map(k => {
+      const s = SUBJECTS[k];
+      const on = k === sub ? 'on' : '';
+      const style = k === sub ? `background:${s.color}` : '';
+      return `<a class="${on}" style="${style}" href="subject.html#/${k}">${s.name}大观</a>`;
+    }).join('');
+  }
+
+  function renderHero(sub) {
+    const S = SUBJECTS[sub];
+    document.getElementById('subjectHero').innerHTML = `
+      <div class="bigseal" style="background:${S.color}">${S.seal}</div>
+      <div>
+        <h1 class="serif">${S.full}</h1>
+        <div class="w">统考占 ${S.weight} · 共 ${S.chapters.length} 章</div>
+        <p>${S.intro}</p>
+        <div class="ch-res" style="border:none;padding-top:14px">
+          ${S.courses.map(c => `<a class="res-link" href="${c.u}" target="_blank" title="${c.extra || ''}">${c.n}<span class="pf">${c.p}</span></a>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  function renderChapters(sub) {
+    const S = SUBJECTS[sub];
+    document.getElementById('chapters').innerHTML = S.chapters.map((c, i) => {
+      const n = qCount(sub, i);
+      return `
+      <article class="chapter" id="ch${i}">
+        <div class="ch-head">
+          <h3 class="serif">${c.t}</h3>
+          <span class="badge ${c.freq === '高' ? 'hot' : c.freq === '中' ? 'mid' : 'low'}">考频·${c.freq}</span>
+          <span class="badge type">${c.type}</span>
+          ${n ? `<span class="badge type">真题例题 ${n} 题</span>` : ''}
+        </div>
+        <div class="ch-pts">${c.pts.map(p => `<span class="chip">${p}</span>`).join('')}</div>
+        <div class="ch-res">
+          ${c.res.map(r => `<a class="res-link" href="${r.u}" target="_blank">${r.n}<span class="pf">${r.p}</span></a>`).join('')}
+          ${n ? `<a class="res-link" href="quiz.html#/${sub}/ch${i}">去刷本章真题 →<span class="pf">刷题</span></a>` : ''}
+        </div>
+        <div class="state-row">
+          ${STATE_NAMES.map((nm, v) => `<button class="state-btn" data-ch="${i}" data-v="${v}">${nm}</button>`).join('')}
+          <span class="state-label">点按标记你的复习状态</span>
+        </div>
+      </article>`;
+    }).join('');
+
+    document.getElementById('chapters').onclick = e => {
+      const btn = e.target.closest('.state-btn');
+      if (!btn) return;
+      const i = +btn.dataset.ch, v = +btn.dataset.v;
+      setState(sub, i, getState(sub, i) === v ? -1 : v);
+    };
+  }
+
+  function renderChStates(sub) {
+    document.querySelectorAll('.state-btn').forEach(b => {
+      const on = getState(sub, +b.dataset.ch) === +b.dataset.v;
+      b.classList.toggle('on', on);
+      b.classList.toggle('s' + b.dataset.v, on);
+    });
+  }
+
+  function renderToc(sub) {
+    const S = SUBJECTS[sub];
+    const done = S.chapters.reduce((a, _, i) => a + (getState(sub, i) === 0 ? 1 : 0), 0);
+    document.getElementById('tocNav').innerHTML = S.chapters.map((c, i) => {
+      const st = getState(sub, i);
+      const cls = st === 0 ? 'done' : st === 1 ? 'learning' : '';
+      return `<a href="#/${sub}/ch${i}" class="${cls}"><span>${c.t.replace(/^第.+章\s*/, '')}</span><span class="dot"></span></a>`;
+    }).join('');
+    document.getElementById('progText').textContent = `已勘熟 ${done} / ${S.chapters.length}`;
+    document.getElementById('progBar').style.width = (done / S.chapters.length * 100) + '%';
+  }
+
+  function renderPrevNext(sub) {
+    const idx = ORDER.indexOf(sub);
+    const prev = SUBJECTS[ORDER[(idx + 3) % 4]], next = SUBJECTS[ORDER[(idx + 1) % 4]];
+    document.getElementById('prevnext').innerHTML = `
+      <a href="subject.html#/${prev.key}">← ${prev.full}</a>
+      <a href="quiz.html#/${sub}">本章刷题 →</a>
+      <a href="subject.html#/${next.key}">${next.full} →</a>`;
+  }
+</script>
+</body>
+</html>
