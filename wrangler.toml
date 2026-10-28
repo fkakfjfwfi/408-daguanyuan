@@ -1,0 +1,8 @@
+name = "408-daguanyuan"
+pages_build_output_dir = "."
+compatibility_date = "2026-10-01"
+
+# 进度云同步存储（部署时由脚本填入真实 id）
+[[kv_namespaces]]
+binding = "PROGRESS_KV"
+id = "7fa81d3cab484f8e957f0efee4762565"

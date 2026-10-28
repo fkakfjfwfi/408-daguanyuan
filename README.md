@@ -25,29 +25,40 @@ python -m http.server 8471
 # 打开 http://127.0.0.1:8471
 ```
 
-## 部署到 GitHub Pages
+## 线上地址与架构
 
-**本站已部署在线**：https://fkakfjfwfi.github.io/408-daguanyuan/
+- **主站（非纯静态，含后端与防护）**：https://408-daguanyuan.pages.dev/
+- 静态镜像：https://fkakfjfwfi.github.io/408-daguanyuan/ （云同步按钮在此不可用，会友好提示）
 
-部署模式为 **Pages 分支部署**（Deploy from branch）：仓库 main 分支即站点，每次 `git push` 到 main 后 GitHub 自动重新构建发布，无需任何手动操作。
+主站部署在 **Cloudflare Pages**：静态前端 + `functions/` 里的 Pages Functions 后端（进度云同步 API），KV 存储绑定 `PROGRESS_KV`。
 
-自己从零部署的步骤：
+## 防护层（均已在 `functions/_middleware.js` 与 API 内实现）
 
-1. GitHub 新建公开仓库，推送本目录：
+| 防护 | 说明 |
+|---|---|
+| 安全响应头 | CSP、X-Frame-Options: DENY、nosniff、Referrer-Policy、Permissions-Policy，全站响应强制附加 |
+| API 同源校验 | 带第三方 Origin 的请求直接 403，防跨站滥用 |
+| 接口限流 | 每 IP 每分钟 20 次（实例内滑动窗口 + 超限写 KV 全局封禁标记 60s，尽力而为模式） |
+| 输入校验 | action 白名单、PIN 正则、设备码格式、载荷 ≤600KB，非法输入 400 |
+| 凭据安全 | PIN 只存 SHA-256 哈希（含设备码盐），设备码为 40^8 随机空间不可枚举 |
+| 平台防护 | Cloudflare 边缘自动 DDoS 吸收 |
 
-   ```bash
-   git init -b main
-   git add -A
-   git commit -m "408大观园"
-   git remote add origin https://github.com/<用户名>/<仓库名>.git
-   git push -u origin main
-   ```
+## 进度云同步（换设备迁移）
 
-2. 仓库 **Settings → Pages → Build and deployment → Source** 选 **Deploy from a branch**，Branch 选 **main / (root)**，保存。
-3. 一两分钟后访问 `https://<用户名>.github.io/<仓库名>/`。
+任一页面点导航栏 **☁** 按钮：
 
-> 站点全部使用相对路径 + 哈希路由，放在仓库子路径（`/<repo>/`）下无需任何配置改动。
-> 备选：`.github/workflows/pages.yml`（Actions 模式）保留在本地，如需启用需给 OAuth 令牌加 `workflow` 权限后再入库。
+1. **备份**：设 4~8 位数字 PIN → 得到 8 位设备码（自动记忆本机）
+2. **恢复**：在别的设备输入设备码 + PIN → 本机进度/答题/错题本/导入题全部还原
+
+## 更新部署
+
+改完代码后（本机已 `wrangler login`）：
+
+```bash
+wrangler pages deploy . --project-name=408-daguanyuan --branch=main
+```
+
+同时 push 到 GitHub 仓库可同步更新静态镜像。本地调试后端：`wrangler pages dev .`
 
 ## 目录结构
 
@@ -55,7 +66,8 @@ python -m http.server 8471
 408-daguanyuan/
 ├── index.html          # 首页
 ├── subject.html        # 四大观（多级路由 #/ds、#/ds/ch2）
-├── quiz.html           # 智能刷题（#/、#/ds、#/ds/ch0、#/wrong）
+├── quiz.html           # 智能刷题（#/、#/ds、#/ds/ch0、#/papers、#/wrong）
+├── js/cloud.js         # 云同步模块（备份/恢复弹窗）
 ├── cuoti.html          # 错题本
 ├── resources.html      # 资源宝库
 ├── css/style.css       # 园林式样式（含深色模式）
