@@ -114,14 +114,36 @@
 <script src="js/questions-os.js"></script>
 <script src="js/questions-cn.js"></script>
 <script src="js/questions-exams.js"></script>
-<script src="js/main.js?v=2"></script>
+<script src="js/main.js?v=3"></script>
 <script src="js/cloud.js?v=1"></script>
 <script>
   const ORDER = ['ds', 'co', 'os', 'cn'];
   const YEARS = Array.from({ length: 2026 - 2009 + 1 }, (_, i) => 2009 + i);
   const LETTERS = ['A', 'B', 'C', 'D'];
+  const EXAM_MS = 70 * 60 * 1000; // 套卷考试模式：70 分钟（408 选择题部分合理时长）
   const app = document.getElementById('app');
   let session = null;
+  let examTimer = null;
+
+  const shuffleOn = () => localStorage.getItem('dgy408:shuffle') === '1';
+  function shuffled(list) {
+    const a = list.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  function shuffleToggleBtn() {
+    return `<button class="btn small" id="shufBtn">${shuffleOn() ? '🔀 乱序：开' : '🔀 乱序：关'}</button>`;
+  }
+  function bindShuffle(rerender) {
+    const b = document.getElementById('shufBtn');
+    if (b) b.onclick = () => {
+      localStorage.setItem('dgy408:shuffle', shuffleOn() ? '0' : '1');
+      rerender();
+    };
+  }
 
   function toast(msg) {
     const t = document.getElementById('toast');
@@ -132,12 +154,24 @@
 
   // ---------- 路由 ----------
   onRoute(() => {
+    if (examTimer) { clearInterval(examTimer); examTimer = null; }
     const p = routePath();
-    if (p[0] === 'wrong') return runQuiz(qWrongIds().map(id => allQ().find(q => q.id === id)).filter(Boolean), '错题重刷');
+    if (p[0] === 'wrong') {
+      const min = +p[1] >= 2 ? +p[1] : 1; // #/wrong/2 → 只重刷错 ≥2 次的高频错题
+      const list = qWrongIds().map(id => allQ().find(q => q.id === id)).filter(Boolean)
+        .filter(q => min <= 1 || ((qGetAns(q.id) || {}).w || 0) >= min)
+        .sort((a, b) => (((qGetAns(b.id) || {}).w || 0) - ((qGetAns(a.id) || {}).w || 0)) ||
+                        ((qGetAns(b.id) || {}).t || 0) - ((qGetAns(a.id) || {}).t || 0));
+      return runQuiz(list, min > 1 ? `高频错题（错 ≥${min} 次）` : '错题重刷');
+    }
     if (p[0] === 'papers') return renderPapers();
     if (p[0] === 'paper' && p[1]) {
       const list = allQ().filter(q => q.y && q.y !== '经典' && q.y === p[1]);
-      return runQuiz(list, p[1] + ' 年真题卷');
+      return runQuiz(list, p[1] + ' 年真题卷', { exam: true });
+    }
+    if (p[0] === 'subpaper' && p[1]) {
+      const list = allQ().filter(q => q.s === p[1] && q.y && q.y !== '经典');
+      return runQuiz(list, SUBJECTS[p[1]].name + ' · 历年真题合集');
     }
     if (ORDER.includes(p[0])) {
       if (p[1] && /^ch\d+$/.test(p[1])) {
@@ -161,7 +195,7 @@
       <section class="hero" style="padding:56px 0 6px">
         <div class="hero-badge">408os 风格 · <b>章节真题 · 真题套卷 · 即答即判 · 错题自动归档</b></div>
         <h1 style="font-size:clamp(30px,4.5vw,44px)">智能<span class="dgy serif">刷题</span></h1>
-        <p class="sub">按章节或按年份刷题，答完立刻判分并展开解析；答错的题自动进入错题本，答对后自动移出。</p>
+        <p class="sub">按章节或按年份刷题，答完立刻判分并展开解析；答错的题自动进入错题本，<b>连续答对 2 次</b>后自动移出。真题套卷带 70 分钟倒计时与百分制计分。</p>
       </section>
       <div class="stats" style="margin-top:22px">
         <div class="stat"><b>${Q.length}<i>题</i></b><span>题库总量（含导入）</span></div>
@@ -170,7 +204,7 @@
         <div class="stat"><b>${wrongN}<i>题</i></b><span>待消灭错题</span></div>
       </div>
       <section style="padding-top:34px">
-        <div class="block-head"><h2 class="serif">选择模式</h2></div>
+        <div class="block-head"><h2 class="serif">选择模式</h2>${shuffleToggleBtn()}</div>
         <div class="mode-cards">
           <a class="ov-card" style="--gc:var(--seal)" href="quiz.html#/papers">
             <h3 class="serif">📜 真题套卷</h3>
@@ -184,7 +218,7 @@
           </a>
           <a class="ov-card" style="--gc:var(--green)" href="quiz.html#/wrong">
             <h3 class="serif">📕 错题重刷</h3>
-            <div class="row"><span>${wrongN} 题待消灭</span><span>答对自动移出</span></div>
+            <div class="row"><span>${wrongN} 题待消灭</span><span>连对 2 次自动移出</span></div>
             <div class="bar"><i style="width:${wrongN ? 100 - wrongN / Math.max(done, 1) * 100 : 100}%"></i></div>
           </a>
         </div>
@@ -225,6 +259,7 @@
       customSave([]); toast('已清空导入题目'); renderOverview();
     };
     document.getElementById('impBtn').onclick = doImport;
+    bindShuffle(renderOverview);
   }
 
   function doImport() {
@@ -264,21 +299,38 @@
       return `
         <div class="list-row" style="${list.length ? '' : 'opacity:.55'}">
           <h3 class="serif">${y} 年真题</h3>
-          <span class="mini">${list.length ? `收录 ${list.length} 题` : '暂未收录'}</span>
+          <span class="mini">${list.length ? `收录 ${list.length} 题 · 限时 70 分钟` : '暂未收录'}</span>
           ${list.length ? `<span class="mini">已做 ${dn}</span><span class="mini">正确率 ${rate}%</span>
             <a class="btn primary" href="quiz.html#/paper/${y}">${dn ? '继续刷' : '开卷'}</a>`
             : `<span class="mini">可用「导入题目」灌入该年完整卷</span>`}
         </div>`;
     }).join('');
+    const subRows = ORDER.map(k => {
+      const S = SUBJECTS[k];
+      const list = allQ().filter(q => q.s === k && q.y && q.y !== '经典');
+      if (!list.length) return '';
+      const dn = list.filter(q => qAnswered(q.id)).length;
+      return `
+        <div class="list-row">
+          <h3 class="serif" style="color:${S.color}">${S.name} · 历年真题合集</h3>
+          <span class="mini">收录 ${list.length} 题</span>
+          <span class="mini">已做 ${dn}</span>
+          <a class="btn primary" href="quiz.html#/subpaper/${k}">${dn ? '继续刷' : '开刷'}</a>
+        </div>`;
+    }).join('');
     app.innerHTML = `
       <section class="hero" style="padding:48px 0 6px">
-        <div class="hero-badge">2009–2026 · <b>按年份开卷</b> · 收录逐年补全</div>
+        <div class="hero-badge">2009–2026 · <b>按年份开卷</b> · 70 分钟倒计时 · 每题 2 分</div>
         <h1 style="font-size:clamp(28px,4vw,40px)">真题<span class="dgy serif">套卷</span></h1>
-        <p class="sub">完整套卷为 40 道选择 + 7 道大题。带年份标签的题会进入对应年份卷；想刷完整卷，用下方「导入题目」灌入真题 JSON 即可。</p>
+        <p class="sub">年份卷为考试模式：倒计时结束自动交卷，按选择题每题 2 分计分。带年份标签的题进入对应年份卷；想刷完整卷，用总览页「导入题目」灌入真题 JSON 即可。</p>
       </section>
       <section style="padding-top:22px">${rows}
-        <a class="btn" href="quiz.html#/">← 返回总览</a>
+        <div class="block-head" style="margin-top:30px"><h2 class="serif">单科真题合集</h2>${shuffleToggleBtn()}</div>
+        <p class="mini" style="margin:-6px 0 14px">把该科所有带年份标签的真题串成一套，不计时、支持乱序，适合按科专项突破。</p>
+        ${subRows || '<p class="mini">暂无带年份标签的真题。</p>'}
+        <div style="margin-top:22px"><a class="btn" href="quiz.html#/">← 返回总览</a></div>
       </section>`;
+    bindShuffle(renderPapers);
   }
 
   // ---------- 章节列表 ----------
@@ -291,6 +343,7 @@
         <h1 style="font-size:clamp(28px,4vw,40px)"><span class="dgy serif">${S.full}</span> · 刷题</h1>
       </section>
       <section style="padding-top:24px">
+        <div style="text-align:right">${shuffleToggleBtn()}</div>
         ${S.chapters.map((c, i) => {
           const qs = allQ().filter(q => q.s === sub && q.c === i);
           const dn = qs.filter(q => qAnswered(q.id)).length;
@@ -307,10 +360,11 @@
         }).join('')}
         <a class="btn" href="quiz.html#/">← 返回科目总览</a>
       </section>`;
+    bindShuffle(() => renderChapters(sub));
   }
 
   // ---------- 答题 ----------
-  function runQuiz(list, title) {
+  function runQuiz(list, title, opt = {}) {
     if (!list.length) {
       app.innerHTML = `
         <div class="done-panel">
@@ -324,20 +378,47 @@
         </div>`;
       return;
     }
-    session = { list, i: 0, right: 0, wrong: [], title };
+    if (shuffleOn()) list = shuffled(list);
+    session = { list, i: 0, right: 0, wrong: [], title, exam: !!opt.exam, endAt: opt.exam ? Date.now() + EXAM_MS : 0, timeout: false, picks: {} };
     renderQuestion();
+    startExamTimer();
+  }
+
+  // 套卷考试模式倒计时（基于绝对时间，切题不重置；到时自动交卷）
+  function startExamTimer() {
+    if (examTimer) { clearInterval(examTimer); examTimer = null; }
+    if (!session || !session.exam) return;
+    const tick = () => {
+      if (!session || !session.exam) return;
+      const el = document.getElementById('examTimer');
+      if (!el) return;
+      const left = session.endAt - Date.now();
+      if (left <= 0) {
+        el.textContent = '⏳ 时间到';
+        clearInterval(examTimer); examTimer = null;
+        session.timeout = true;
+        toast('考试时间到，自动交卷');
+        renderDone(true);
+        return;
+      }
+      const m = Math.floor(left / 60000), s = Math.floor(left % 60000 / 1000);
+      el.textContent = `⏳ 剩余 ${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      el.style.color = left < 5 * 60000 ? 'var(--seal)' : '';
+    };
+    tick();
+    examTimer = setInterval(tick, 1000);
   }
 
   function renderQuestion() {
     const q = session.list[session.i];
-    const rec = qGetAns(q.id);
     const S = SUBJECTS[q.s];
     const chName = S.chapters[q.c] ? S.chapters[q.c].t : '';
+    const mine = session.picks[q.id]; // 本会话作答记录；有历史记录但本会话未答的题仍可重答
     const optsHtml = q.o.map((o, oi) => {
       let cls = 'opt';
-      if (rec) {
+      if (mine) {
         if (oi === q.a) cls += ' right';
-        else if (oi === rec.pick) cls += ' wrong';
+        else if (oi === mine.pick) cls += ' wrong';
       }
       return `<button class="${cls}" data-oi="${oi}"><span class="tag">${LETTERS[oi]}</span><span>${o}</span></button>`;
     }).join('');
@@ -350,6 +431,7 @@
       <div class="qprogress"><i style="width:${(session.i) / session.list.length * 100}%"></i></div>
       <div class="qstats" style="margin-bottom:14px">
         <span>第 ${session.i + 1} / ${session.list.length} 题</span>
+        ${session.exam ? '<span id="examTimer"></span>' : ''}
         <span style="color:var(--green)">本组答对 ${session.right}</span>
         <span style="color:var(--seal)">答错 ${session.wrong.length}</span>
       </div>
@@ -372,8 +454,8 @@
 
     const optsEl = app.querySelector('.opts');
     const explain = app.querySelector('#explain');
-    let locked = !!rec;
-    if (rec) showExplain(rec, q);
+    let locked = !!mine;
+    if (mine) showExplain(mine, q);
 
     optsEl.addEventListener('click', e => {
       const b = e.target.closest('.opt');
@@ -381,12 +463,16 @@
       locked = true;
       const pick = +b.dataset.oi;
       const ok = pick === q.a;
-      qRecord(q.id, ok, pick);
+      const r = qRecord(q.id, ok, pick);
+      session.picks[q.id] = { ok, pick };
       if (ok) session.right++;
       else session.wrong.push(q);
       showExplain({ ok, pick }, q, true);
       updateStats();
-      toast(ok ? '答对了，真棒！' : '答错了，已加入错题本 📒');
+      if (!ok) toast('答错了，已加入错题本 📒');
+      else if (r.removed) toast('连续答对 2 次，已移出错题本 ✅');
+      else if (r.streakLeft) toast(`答对了！再连对 ${r.streakLeft} 次移出错题本`);
+      else toast('答对了，真棒！');
     });
 
     function showExplain(r, qq) {
@@ -410,25 +496,37 @@
 
   function updateStats() {
     const spans = app.querySelectorAll('.qstats span');
-    if (spans[1]) spans[1].textContent = `本组答对 ${session.right}`;
-    if (spans[2]) spans[2].textContent = `答错 ${session.wrong.length}`;
+    // 末两个 span 固定为「答对/答错」（考试模式下前面还有倒计时 span）
+    if (spans.length >= 2) {
+      spans[spans.length - 2].textContent = `本组答对 ${session.right}`;
+      spans[spans.length - 1].textContent = `答错 ${session.wrong.length}`;
+    }
   }
 
-  function renderDone() {
+  function renderDone(timeout) {
+    if (examTimer) { clearInterval(examTimer); examTimer = null; }
     const n = session.list.length;
     const rate = Math.round(session.right / n * 100);
+    const scoreHtml = session.exam
+      ? `<div class="score serif">${session.right * 2}<span style="font-size:20px;color:var(--ink-3);font-weight:400"> / ${n * 2} 分</span></div>
+         <p style="color:var(--ink-2)">选择题得分（每题 2 分）· 答对 ${session.right} / ${n} 题 · 正确率 ${rate}%</p>`
+      : '';
     app.innerHTML = `
       <div class="done-panel">
         <div class="mini" style="letter-spacing:.3em">${session.title}</div>
-        <div class="score serif">${session.right} / ${n}</div>
-        <p style="color:var(--ink-2)">正确率 ${rate}%${rate === 100 ? '，满分通过，可喜可贺！' : rate >= 80 ? '，稳扎稳打！' : rate >= 60 ? '，错题已归档，重刷薄弱章节吧。' : '，别灰心，错题本会陪你把坑都填平。'}</p>
+        ${session.exam
+          ? `${timeout ? '<p style="color:var(--seal);font-weight:600">⏰ 考试时间到，已自动交卷</p>' : ''}
+             ${scoreHtml}`
+          : `<div class="score serif">${session.right} / ${n}</div>
+             <p style="color:var(--ink-2)">正确率 ${rate}%</p>`}
+        ${!session.exam ? `<p style="color:var(--ink-2)">${rate === 100 ? '满分通过，可喜可贺！' : rate >= 80 ? '稳扎稳打！' : rate >= 60 ? '错题已归档，重刷薄弱章节吧。' : '别灰心，错题本会陪你把坑都填平。'}</p>` : ''}
         <div style="margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
           <button class="btn" id="redoBtn">再刷一遍</button>
           ${session.wrong.length ? '<a class="btn primary" href="cuoti.html">去错题本看解析</a>' : '<a class="btn primary" href="quiz.html#/">换个章节</a>'}
           <a class="btn" href="quiz.html#/">返回总览</a>
         </div>
       </div>`;
-    app.querySelector('#redoBtn').onclick = () => runQuiz(session.list, session.title);
+    app.querySelector('#redoBtn').onclick = () => runQuiz(session.list, session.title, { exam: session.exam });
   }
 </script>
 </body>

@@ -21,6 +21,19 @@
   padding: 12px 16px; font-size: 14px; color: var(--ink-2); line-height: 1.8;
 }
 .opt-mini { margin-top: 8px; font-size: 14px; color: var(--ink-2); line-height: 1.7; }
+.wrong-q .opt-mini.right { color: var(--green); font-weight: 600; }
+.wrong-q .opt-mini.wrong { color: var(--seal); font-weight: 600; }
+.wbadge {
+  font-size: 12px; color: var(--seal); white-space: nowrap;
+  background: color-mix(in srgb, var(--seal) 10%, transparent); border-radius: 999px; padding: 3px 10px;
+}
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 4px; }
+.chip {
+  border: 1px solid var(--line); background: var(--card); color: var(--ink-2);
+  border-radius: 999px; padding: 5px 14px; font-size: 13px; cursor: pointer; font-family: inherit; transition: .15s;
+}
+.chip:hover { border-color: var(--seal); color: var(--seal); }
+.chip.on { background: var(--seal); border-color: var(--seal); color: #fff; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -41,9 +54,9 @@
 </header>
 
 <section class="hero">
-  <div class="hero-badge">错题自动归档 · 答对即移出 · <b>只做错过的题</b></div>
+  <div class="hero-badge">错题自动归档 · <b>连对 2 次移出</b> · 只做错过的题</div>
   <h1 style="font-size:clamp(32px,5vw,50px)">错题<span class="dgy serif">本</span></h1>
-  <p class="sub">刷题中答错的题都躺在这里。重刷答对自动移出；也可以直接移除。考前两周，这本就是你的专属背诵册。</p>
+  <p class="sub">刷题中答错的题都躺在这里，按累计错次从高到低排——最上面的就是你最薄弱的。重刷<b>连续答对 2 次</b>自动移出（防止偶然蒙对）；也可以直接移除。考前两周，这本就是你的专属背诵册。</p>
   <div class="stats" style="margin-top:26px" id="wrongStats"></div>
 </section>
 
@@ -51,8 +64,11 @@
   <div class="block-head">
     <h2 class="serif">待消灭错题</h2>
     <p id="headNote"></p>
+    <a class="more" id="redoHot" href="quiz.html#/wrong/2" style="display:none">重刷高频错题（错≥2次）→</a>
     <a class="more" id="redoAll" href="quiz.html#/wrong">错题重刷模式 →</a>
   </div>
+  <div class="chips" id="subChips"></div>
+  <div class="chips" id="chChips" style="margin-top:8px"></div>
   <div id="wrongList"></div>
 </section>
 
@@ -69,34 +85,64 @@
 <script src="js/questions-os.js"></script>
 <script src="js/questions-cn.js"></script>
 <script src="js/questions-exams.js"></script>
-<script src="js/main.js?v=2"></script>
+<script src="js/main.js?v=3"></script>
 <script src="js/cloud.js?v=1"></script>
 <script>
   const LETTERS = ['A', 'B', 'C', 'D'];
   const ORDER = ['ds', 'co', 'os', 'cn'];
   const byId = Object.fromEntries(allQ().map(q => [q.id, q]));
-  const bySub = { ds: [], co: [], os: [], cn: [] };
+  let filter = { sub: '', ch: '' };
 
-  function load() {
-    bySub.ds.length = bySub.co.length = bySub.os.length = bySub.cn.length = 0;
-    qWrongIds().forEach(id => { const q = byId[id]; if (q) bySub[q.s].push(q); });
-    ORDER.forEach(k => bySub[k].sort((a, b) => a.c - b.c));
-    render();
+  const wOf = id => (qGetAns(id) || {}).w || 0;           // 累计错次
+  const kOf = id => (qGetAns(id) || {}).k || 0;           // 当前连对次数
+  const wrongTime = id => +(localStorage.getItem('dgy408:wrong:' + id) || 0); // 最近答错时间
+  function ago(ts) {
+    if (!ts) return '';
+    const d = Date.now() - ts, day = 86400000;
+    if (d < day) return '今天';
+    if (d < 2 * day) return '昨天';
+    if (d < 30 * day) return Math.floor(d / day) + ' 天前';
+    return Math.floor(d / 30 / day) + ' 个月前';
+  }
+
+  function pool() { return qWrongIds().map(id => byId[id]).filter(Boolean); }
+  function filtered() {
+    return pool()
+      .filter(q => !filter.sub || q.s === filter.sub)
+      .filter(q => !filter.sub || filter.ch === '' || q.c === +filter.ch)
+      .sort((a, b) => wOf(b.id) - wOf(a.id) || wrongTime(b.id) - wrongTime(a.id));
   }
 
   function render() {
-    const total = Object.values(bySub).reduce((a, l) => a + l.length, 0);
+    const all = pool();
+    const hotN = all.filter(q => wOf(q.id) >= 2).length;
     document.getElementById('wrongStats').innerHTML = `
-      <div class="stat"><b style="color:var(--seal)">${total}<i>题</i></b><span>待消灭错题</span></div>
-      ${['ds', 'co', 'os', 'cn'].map(k => `
-        <div class="stat"><b>${bySub[k].length}<i>题</i></b><span>${SUBJECTS[k].name}</span></div>`).join('')}`;
-    document.getElementById('headNote').textContent = total
-      ? '重刷答对后自动移出；也可点「移出错题本」。'
+      <div class="stat"><b style="color:var(--seal)">${all.length}<i>题</i></b><span>待消灭错题</span></div>
+      ${ORDER.map(k => `
+        <div class="stat"><b>${all.filter(q => q.s === k).length}<i>题</i></b><span>${SUBJECTS[k].name}</span></div>`).join('')}`;
+    document.getElementById('headNote').textContent = all.length
+      ? '按累计错次排序；重刷连对 2 次自动移出，也可手动移除。'
       : '错题本是空的——去刷题吧，遇到错题它会自动出现。';
-    document.getElementById('redoAll').style.display = total ? '' : 'none';
+    document.getElementById('redoAll').style.display = all.length ? '' : 'none';
+    document.getElementById('redoHot').style.display = hotN ? '' : 'none';
+
+    // 筛选 chips：科目 + 章节（章节在选定科目后出现）
+    const subEl = document.getElementById('subChips');
+    const chEl = document.getElementById('chChips');
+    subEl.innerHTML = all.length ? `
+      <button class="chip ${!filter.sub ? 'on' : ''}" data-sub="">全部</button>
+      ${ORDER.filter(k => all.some(q => q.s === k)).map(k => `
+        <button class="chip ${filter.sub === k ? 'on' : ''}" data-sub="${k}">${SUBJECTS[k].name}</button>`).join('')}` : '';
+    if (filter.sub && all.some(q => q.s === filter.sub)) {
+      const chs = [...new Set(all.filter(q => q.s === filter.sub).map(q => q.c))].sort((a, b) => a - b);
+      chEl.innerHTML = `
+        <button class="chip ${filter.ch === '' ? 'on' : ''}" data-ch="">全部章节</button>
+        ${chs.map(c => `
+          <button class="chip ${filter.ch !== '' && +filter.ch === c ? 'on' : ''}" data-ch="${c}">${SUBJECTS[filter.sub].chapters[c] ? SUBJECTS[filter.sub].chapters[c].t : '第' + (c + 1) + '章'}</button>`).join('')}`;
+    } else chEl.innerHTML = '';
 
     const el = document.getElementById('wrongList');
-    if (!total) {
+    if (!all.length) {
       el.innerHTML = `
         <div class="done-panel" style="padding:30px 0">
           <div class="serif" style="font-size:26px">🎉 错题清零，可喜可贺</div>
@@ -104,38 +150,65 @@
         </div>`;
       return;
     }
-    el.innerHTML = ['ds', 'co', 'os', 'cn'].map(k => {
-      const list = bySub[k];
-      if (!list.length) return '';
+    const list = filtered();
+    if (!list.length) {
+      el.innerHTML = '<p class="mini" style="padding:20px 0">该筛选下没有错题。</p>';
+      return;
+    }
+    const groups = filter.sub ? [filter.sub] : ORDER.filter(k => list.some(q => q.s === k));
+    el.innerHTML = groups.map(k => {
+      const glist = list.filter(q => q.s === k);
+      if (!glist.length) return '';
       const S = SUBJECTS[k];
       return `
         <div class="block-head" style="margin-top:26px">
           <h2 class="serif" style="font-size:22px">${S.name}</h2>
+          <span class="mini">${glist.length} 题 · 平均错 ${(glist.reduce((a, q) => a + wOf(q.id), 0) / glist.length).toFixed(1)} 次</span>
         </div>
-        ${list.map(q => `
-          <div class="wrong-q">
-            <div class="q-meta" style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-              <span class="badge ${q.y === '经典' ? 'mid' : ''}" style="background:color-mix(in srgb, var(--gold) 15%, transparent);color:var(--gold)">${q.y === '经典' ? '经典题' : q.y + '真题'}</span>
-              <span class="badge type">${S.chapters[q.c] ? S.chapters[q.c].t : ''}</span>
-              <span style="flex:1"></span>
-              <button class="btn" data-remove="${q.id}">移出错题本</button>
-            </div>
-            <div class="qtext">${q.q}</div>
-            <div>${q.o.map((o, oi) => `<div class="opt-mini"><b>${LETTERS[oi]}.</b> ${o}${oi === q.a ? ' ✓' : ''}</div>`).join('')}</div>
-            <div class="ansline">你的答案：<b class="you">${(() => { const a = qGetAns(q.id); return a ? LETTERS[a.pick] : '未答'; })()}</b>　正确答案：<b class="key">${LETTERS[q.a]}</b></div>
-            <div class="explain">${q.e}</div>
-          </div>`).join('')}`;
+        ${glist.map(q => card(q, S)).join('')}`;
     }).join('');
   }
 
+  function card(q, S) {
+    const w = wOf(q.id), k = kOf(q.id), wt = wrongTime(q.id);
+    const rec = qGetAns(q.id);
+    return `
+      <div class="wrong-q">
+        <div class="q-meta" style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+          <span class="badge ${q.y === '经典' ? 'mid' : ''}" style="background:color-mix(in srgb, var(--gold) 15%, transparent);color:var(--gold)">${q.y === '经典' ? '经典题' : q.y + '真题'}</span>
+          <span class="badge type">${S.chapters[q.c] ? S.chapters[q.c].t : ''}</span>
+          <span class="wbadge">✗ 累计错 ${w} 次${w >= 2 ? ' · 高频' : ''}</span>
+          <span class="mini">最近错于 ${ago(wt)}</span>
+          <span style="flex:1"></span>
+          <button class="btn" data-remove="${q.id}">移出错题本</button>
+        </div>
+        <div class="qtext">${q.q}</div>
+        <div>${q.o.map((o, oi) => `<div class="opt-mini ${oi === q.a ? 'right' : (rec && oi === rec.pick && !rec.ok ? 'wrong' : '')}"><b>${LETTERS[oi]}.</b> ${o}${oi === q.a ? ' ✓' : ''}</div>`).join('')}</div>
+        <div class="ansline">你的答案：<b class="you">${rec ? LETTERS[rec.pick] : '未答'}</b>　正确答案：<b class="key">${LETTERS[q.a]}</b>　移出进度：<b>${k >= 2 ? '已达标准' : '还需连对 ' + (2 - k) + ' 次'}</b></div>
+        <div class="explain">${q.e}</div>
+      </div>`;
+  }
+
+  document.getElementById('subChips').addEventListener('click', e => {
+    const b = e.target.closest('[data-sub]');
+    if (!b) return;
+    filter = { sub: b.dataset.sub, ch: '' };
+    render();
+  });
+  document.getElementById('chChips').addEventListener('click', e => {
+    const b = e.target.closest('[data-ch]');
+    if (!b) return;
+    filter.ch = b.dataset.ch;
+    render();
+  });
   document.getElementById('wrongList').addEventListener('click', e => {
     const b = e.target.closest('[data-remove]');
     if (!b) return;
     qRemoveWrong(b.dataset.remove);
-    load();
+    render();
   });
 
-  load();
+  render();
 </script>
 </body>
 </html>

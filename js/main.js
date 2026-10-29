@@ -27,12 +27,36 @@ function onRoute(fn) {
   fn();
 }
 // 答题记录与错题本存取
+// 记录结构：{ ok, pick, n:总做次数, w:累计错次, k:连续答对次数, t:最后作答时间 }
+// 旧记录只有 {ok,pick}，读取时按一次作答补齐统计（向后兼容）
+// 错题移出策略：连续答对 2 次自动移出（防止偶然答对），答错立即归档并累计错次
+const WRONG_REMOVED_AT = 2;
+
+function normAns(v) {
+  if (!v) return null;
+  if (typeof v.n !== 'number') return { ok: !!v.ok, pick: v.pick, n: 1, w: v.ok ? 0 : 1, k: v.ok ? 1 : 0, t: 0 };
+  return v;
+}
 function qAnswered(id) { return localStorage.getItem('dgy408:ans:' + id) !== null; }
-function qGetAns(id) { const v = localStorage.getItem('dgy408:ans:' + id); return v ? JSON.parse(v) : null; }
+function qGetAns(id) { return normAns(qGetAnsRaw(id)); }
+function qGetAnsRaw(id) { const v = localStorage.getItem('dgy408:ans:' + id); return v ? JSON.parse(v) : null; }
+// 返回 { removed:本次是否移出错题本, willRemoveAt:还需连对几次 }
 function qRecord(id, ok, pick) {
-  localStorage.setItem('dgy408:ans:' + id, JSON.stringify({ ok, pick }));
-  if (ok) localStorage.removeItem('dgy408:wrong:' + id);
-  else localStorage.setItem('dgy408:wrong:' + id, String(Date.now()));
+  const old = normAns(qGetAnsRaw(id)) || { n: 0, w: 0, k: 0 };
+  const k = ok ? (old.k || 0) + 1 : 0;
+  localStorage.setItem('dgy408:ans:' + id, JSON.stringify({
+    ok, pick, n: (old.n || 0) + 1, w: (old.w || 0) + (ok ? 0 : 1), k, t: Date.now()
+  }));
+  const wkey = 'dgy408:wrong:' + id;
+  if (ok) {
+    if (localStorage.getItem(wkey) !== null && k >= WRONG_REMOVED_AT) {
+      localStorage.removeItem(wkey);
+      return { removed: true, streakLeft: 0 };
+    }
+    return { removed: false, streakLeft: Math.max(0, WRONG_REMOVED_AT - k) };
+  }
+  localStorage.setItem(wkey, String(Date.now()));
+  return { removed: false, streakLeft: WRONG_REMOVED_AT };
 }
 function qWrongIds() {
   const ids = [];
