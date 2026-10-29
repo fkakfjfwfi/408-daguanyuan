@@ -1,3 +1,4 @@
 .wrangler/
+.github/
 .cf-token
 node_modules/
